@@ -1,0 +1,467 @@
+// This Pine Script(TM) source code is provided as-is for research and automation.
+// ATR + Elliott Wave hybrid signal strategy  —  Pine Script v5
+//
+// WHAT THIS DOES (explicit rules, no black box):
+//
+//   1. REGIME / VOLATILITY FILTER (ATR-driven)
+//      - ATR ratio = ATR(len) / SMA(ATR, baseline). Trade only when volatility is
+//        "alive" (ratio >= min) but not in a shock spike (ratio <= max).
+//      - Optional ADX floor to skip ranging / directionless markets.
+//      - Optional session window (UTC).
+//
+//   2. SWING STRUCTURE (ATR zigzag)
+//      - Pivots from ta.pivothigh / ta.pivotlow (confirmed R bars late — no repaint).
+//      - A pivot is only accepted as a new swing if it is >= MinSwing x ATR away
+//        from the previous opposite swing. Same-side pivots replace the previous
+//        one if more extreme. Result: alternating High/Low swings filtered by ATR.
+//
+//   3. ELLIOTT WAVE APPROXIMATIONS (two setups)
+//      Setup A "W3"  : Wave-3 entry after a Wave-2 pullback.
+//                      Long: L0 -> H1 -> L2 with L2 > L0 (EW hard rule: wave 2
+//                      never retraces past the start of wave 1), Wave-2 retrace
+//                      between W2min..W2max of Wave-1, Wave-1 >= MinW1 x ATR.
+//                      Trigger: close above L2 + TrigFrac*(H1-L2)  (1.0 = W1 high break).
+//                      Targets: Fibonacci extensions of Wave-1 projected from L2.
+//      Setup B "ABC" : Trend resumption after a zigzag A-B-C correction.
+//                      Long: H0 -> A -> B -> C with B < H0, C < A,
+//                      B retraces bMin..bMax of A, |C|/|A| within cMin..cMax,
+//                      and price above trend EMA (correction inside an uptrend).
+//                      Trigger: close above C + TrigFrac*(B-C)  (1.0 = B break).
+//                      Targets: Fibonacci extensions of the correction depth (H0-C).
+//      Shorts are exact mirrors.
+//
+//   4. STOPS & TARGETS (ATR + structure, asymmetric by construction)
+//      - Structural stop = invalidation pivot -/+ buffer x ATR.
+//      - ATR stop        = entry -/+ SL_ATR x ATR.
+//      - Mode: Structural | ATR | Tighter of both (default). A minimum stop of
+//        MinSL x ATR prevents noise stops; trades whose stop exceeds MaxSL x ATR
+//        are skipped.
+//      - TPn = the further of (Fib target n) and (entry + Rfloor_n x risk), so
+//        TP1/TP2/TP3 are never below 1R/2R/3R (defaults).
+//
+//   5. OUTPUT
+//      - Strategy orders (for Strategy Tester measurement) with partial exits at
+//        TP1/TP2/TP3 and optional break-even after TP1 — same logic as the MT5 EA.
+//      - alert() with a JSON payload for the webhook bridge.
+//
+// ALERT SETUP: Create Alert -> Condition: this strategy -> "alert() function calls only"
+//              -> Notifications: Webhook URL = https://<your-bridge>/webhook/tradingview
+//              Leave the message box empty; the script builds the JSON itself.
+//
+//@version=5
+strategy("ATR-EW Hybrid Signals", shorttitle="ATR-EW", overlay=true,
+     pyramiding=0, initial_capital=10000, currency=currency.USD,
+     commission_type=strategy.commission.percent, commission_value=0.0,
+     slippage=2, process_orders_on_close=false, calc_on_every_tick=false,
+     max_bars_back=100, max_labels_count=500, max_lines_count=500)
+
+// ============================================================================
+// INPUTS
+// ============================================================================
+grpVol = "1. Volatility / regime filter"
+i_atrLen      = input.int(14,    "ATR length",                       minval=1,  group=grpVol)
+i_atrBaseLen  = input.int(100,   "ATR baseline (SMA of ATR)",        minval=10, group=grpVol)
+i_minAtrRatio = input.float(0.8, "Min ATR / baseline",               step=0.05, group=grpVol, tooltip="Below this the market is too quiet / ranging.")
+i_maxAtrRatio = input.float(2.5, "Max ATR / baseline",               step=0.1,  group=grpVol, tooltip="Above this = shock / news spike. Skip.")
+i_useAdx      = input.bool(true, "Require ADX trend strength",                  group=grpVol)
+i_adxLen      = input.int(14,    "ADX length",                       minval=2,  group=grpVol)
+i_minAdx      = input.float(18,  "Min ADX",                          step=1,    group=grpVol)
+
+grpPiv = "2. Swing pivots (ATR zigzag)"
+i_pivL        = input.int(5,     "Pivot left bars",                  minval=1,  group=grpPiv)
+i_pivR        = input.int(3,     "Pivot right bars (confirmation lag)", minval=1, group=grpPiv)
+i_minSwingATR = input.float(1.0, "Min swing size (x ATR)",           step=0.1,  group=grpPiv)
+i_showZZ      = input.bool(true, "Draw zigzag",                                 group=grpPiv)
+
+grpEW = "3. Elliott Wave structure"
+i_useW3       = input.bool(true,   "Setup A: Wave-3 after Wave-2 pullback",     group=grpEW)
+i_w2Min       = input.float(0.382, "  W2 min retracement of W1", step=0.01,     group=grpEW)
+i_w2Max       = input.float(0.786, "  W2 max retracement of W1", step=0.01,     group=grpEW)
+i_minW1ATR    = input.float(2.0,   "  Min W1 size (x ATR)",      step=0.1,      group=grpEW)
+i_w3TrendReq  = input.bool(false,  "  Require trend EMA alignment for W3",       group=grpEW)
+i_useABC      = input.bool(true,   "Setup B: Trend resumption after ABC",       group=grpEW)
+i_bMin        = input.float(0.236, "  B min retracement of A",   step=0.01,     group=grpEW)
+i_bMax        = input.float(0.886, "  B max retracement of A",   step=0.01,     group=grpEW)
+i_cMin        = input.float(0.618, "  C/A min ratio",            step=0.01,     group=grpEW)
+i_cMax        = input.float(1.618, "  C/A max ratio",            step=0.01,     group=grpEW)
+i_minAATR     = input.float(1.5,   "  Min A size (x ATR)",       step=0.1,      group=grpEW)
+i_trendLen    = input.int(200,     "Trend EMA length",           minval=10,     group=grpEW)
+i_trigFrac    = input.float(1.0,   "Trigger level (fraction of last swing)", minval=0.2, maxval=1.0, step=0.05, group=grpEW, tooltip="1.0 = break of W1 high / B high (conservative). 0.5 = earlier entry at mid-swing.")
+i_maxChaseATR = input.float(0.5,   "Max chase beyond trigger (x ATR)", step=0.1, group=grpEW, tooltip="If price is already this far past the trigger, skip — don't chase.")
+i_maxBarsPiv  = input.int(20,      "Max bars after last pivot",  minval=2,      group=grpEW)
+
+grpRisk = "4. Stops & targets"
+i_slMode      = input.string("Tighter of both", "Stop mode", options=["Structural", "ATR", "Tighter of both"], group=grpRisk)
+i_slBufATR    = input.float(0.25,  "Structural buffer (x ATR)",  step=0.05, group=grpRisk)
+i_slATR       = input.float(1.5,   "ATR stop (x ATR)",           step=0.1,  group=grpRisk)
+i_minSlATR    = input.float(0.5,   "Min stop (x ATR)",           step=0.1,  group=grpRisk)
+i_maxSlATR    = input.float(3.0,   "Max stop (x ATR) — skip if wider", step=0.1, group=grpRisk)
+i_tpFib1      = input.float(1.0,   "TP1 Fib extension",          step=0.01, group=grpRisk)
+i_tpFib2      = input.float(1.618, "TP2 Fib extension",          step=0.01, group=grpRisk)
+i_tpFib3      = input.float(2.618, "TP3 Fib extension",          step=0.01, group=grpRisk)
+i_rFloor1     = input.float(1.0,   "TP1 min R",                  step=0.1,  group=grpRisk)
+i_rFloor2     = input.float(2.0,   "TP2 min R",                  step=0.1,  group=grpRisk)
+i_rFloor3     = input.float(3.0,   "TP3 min R",                  step=0.1,  group=grpRisk)
+i_tp1Pct      = input.float(40,    "Close % at TP1",  minval=0, maxval=100, group=grpRisk)
+i_tp2Pct      = input.float(30,    "Close % at TP2",  minval=0, maxval=100, group=grpRisk, tooltip="Remainder runs to TP3.")
+i_beAfterTP1  = input.bool(true,   "Move stop to break-even after TP1",     group=grpRisk)
+i_trailAfterTP2 = input.bool(true, "Move stop to TP1 after TP2",            group=grpRisk)
+i_riskPct     = input.float(0.5,   "Backtest risk per trade (% equity)", step=0.1, group=grpRisk)
+
+grpFlow = "5. Signal flow"
+i_useSession  = input.bool(true,   "Restrict to session (UTC)",            group=grpFlow)
+i_session     = input.session("0700-2000", "Session (UTC)",                 group=grpFlow)
+i_cooldown    = input.int(8,       "Cooldown bars between signals", minval=0, group=grpFlow)
+i_maxPerDay   = input.int(3,       "Max signals per day (this chart)", minval=1, group=grpFlow)
+i_oneAtATime  = input.bool(true,   "Only signal when strategy is flat",    group=grpFlow, tooltip="Keeps alerts identical to backtested trades.")
+
+grpAlert = "6. Alert payload"
+i_secret      = input.string("CHANGE_ME", "Webhook shared secret",         group=grpAlert)
+i_symOverride = input.string("",   "Symbol override (blank = chart ticker)", group=grpAlert)
+i_recentBars  = input.int(20,      "Recent closes in payload (AI context)", minval=0, maxval=50, group=grpAlert)
+i_showLevels  = input.bool(true,   "Draw entry/SL/TP levels",              group=grpAlert)
+
+// ============================================================================
+// CORE SERIES
+// ============================================================================
+atr      = ta.atr(i_atrLen)
+atrBase  = ta.sma(atr, i_atrBaseLen)
+atrRatio = atr / atrBase
+[diPlus, diMinus, adxVal] = ta.dmi(i_adxLen, i_adxLen)
+emaTrend = ta.ema(close, i_trendLen)
+
+volOK     = not na(atrRatio) and atrRatio >= i_minAtrRatio and atrRatio <= i_maxAtrRatio
+adxOK     = not i_useAdx or (not na(adxVal) and adxVal >= i_minAdx)
+sessionOK = not i_useSession or not na(time(timeframe.period, i_session, "UTC"))
+regimeOK  = volOK and adxOK and sessionOK
+
+// ============================================================================
+// ATR ZIGZAG  (alternating swing highs/lows, ATR-filtered)
+// ============================================================================
+var float[] zzP = array.new_float()   // price
+var int[]   zzB = array.new_int()     // bar_index
+var int[]   zzD = array.new_int()     // +1 = swing high, -1 = swing low
+var line[]  zzL = array.new_line()    // drawn legs
+MAX_PIVOTS = 12
+
+f_push(float p, int b, int d) =>
+    int n = array.size(zzP)
+    if i_showZZ and n > 0
+        line ln = line.new(array.get(zzB, n - 1), array.get(zzP, n - 1), b, p, color=color.new(color.gray, 30), width=1)
+        array.push(zzL, ln)
+        if array.size(zzL) > 60
+            line.delete(array.shift(zzL))
+    array.push(zzP, p)
+    array.push(zzB, b)
+    array.push(zzD, d)
+    if array.size(zzP) > MAX_PIVOTS
+        array.shift(zzP)
+        array.shift(zzB)
+        array.shift(zzD)
+    true
+
+f_addPivot(float p, int b, int d, float minSwing) =>
+    int n = array.size(zzP)
+    bool changed = false
+    if n == 0
+        f_push(p, b, d)
+        changed := true
+    else
+        int   lastD = array.get(zzD, n - 1)
+        float lastP = array.get(zzP, n - 1)
+        if lastD == d
+            // Same side: keep the more extreme swing, extend the drawn leg.
+            if (d == 1 and p > lastP) or (d == -1 and p < lastP)
+                array.set(zzP, n - 1, p)
+                array.set(zzB, n - 1, b)
+                if i_showZZ and array.size(zzL) > 0
+                    line.set_xy2(array.get(zzL, array.size(zzL) - 1), b, p)
+                changed := true
+        else
+            // Opposite side: accept only if it is a real swing (>= minSwing) in the right direction.
+            bool rightSide = d == 1 ? p > lastP : p < lastP
+            if rightSide and math.abs(p - lastP) >= minSwing
+                f_push(p, b, d)
+                changed := true
+    changed
+
+ph       = ta.pivothigh(high, i_pivL, i_pivR)
+pl       = ta.pivotlow(low, i_pivL, i_pivR)
+pivBar   = bar_index - i_pivR
+atrAtPiv = nz(atr[i_pivR], atr)
+minSwing = nz(atrAtPiv, 0.0) * i_minSwingATR
+
+if not na(atr)
+    int lastDir = array.size(zzD) > 0 ? array.get(zzD, array.size(zzD) - 1) : 0
+    if not na(ph) and not na(pl)
+        // Outside bar produced both — add in the order that keeps alternation.
+        if lastDir == 1
+            f_addPivot(pl, pivBar, -1, minSwing)
+            f_addPivot(ph, pivBar, 1, minSwing)
+        else
+            f_addPivot(ph, pivBar, 1, minSwing)
+            f_addPivot(pl, pivBar, -1, minSwing)
+    else if not na(ph)
+        f_addPivot(ph, pivBar, 1, minSwing)
+    else if not na(pl)
+        f_addPivot(pl, pivBar, -1, minSwing)
+
+// k = 0 is the most recent pivot. Caller must check array size first (v5 has no lazy and/or).
+f_p(int k) => array.get(zzP, array.size(zzP) - 1 - k)
+f_b(int k) => array.get(zzB, array.size(zzB) - 1 - k)
+f_d(int k) => array.get(zzD, array.size(zzD) - 1 - k)
+
+// Lowest low / highest high of the bars AFTER a pivot (excludes the pivot bar).
+f_lowestSince(int bars) =>
+    float m = low
+    for i = 0 to math.max(bars - 1, 0)
+        m := math.min(m, low[i])
+    m
+f_highestSince(int bars) =>
+    float m = high
+    for i = 0 to math.max(bars - 1, 0)
+        m := math.max(m, high[i])
+    m
+
+// ============================================================================
+// SETUP DETECTION
+// ============================================================================
+var int lastUsedPivotBar = -1
+var int lastSignalBar    = -100000
+var int signalsToday     = 0
+if ta.change(dayofmonth(time, "UTC")) != 0   // UTC day, consistent with the session filter + bridge caps
+    signalsToday := 0
+
+int    sigDir     = 0      // +1 long, -1 short
+string sigSetup   = ""
+float  sigStopPiv = na     // structural invalidation level
+float  sigTpBase  = na     // projection origin
+float  sigTpLen   = na     // projection length
+int    sigPivBar  = -1
+string sigPivots  = ""     // JSON array of the pivots used (oldest -> newest)
+int    nPiv       = array.size(zzP)
+
+// ---- Setup A: Wave-3 entry after Wave-2 -----------------------------------
+if i_useW3 and nPiv >= 3 and not na(atr)
+    float p0 = f_p(2)
+    float p1 = f_p(1)
+    float p2 = f_p(0)
+    int   b2 = f_b(0)
+    int   d2 = f_d(0)
+    float w1 = math.abs(p1 - p0)
+    float w2 = math.abs(p1 - p2)
+    float retr = w1 > 0 ? w2 / w1 : na
+    int   barsSince = bar_index - b2
+    bool  shapeOK = not na(retr) and retr >= i_w2Min and retr <= i_w2Max and w1 >= i_minW1ATR * atr and barsSince <= i_maxBarsPiv and b2 != lastUsedPivotBar
+    // Bullish: L0 -> H1 -> L2, L2 above L0
+    if shapeOK and d2 == -1 and p2 > p0 and (not i_w3TrendReq or close > emaTrend)
+        float trig = p2 + i_trigFrac * (p1 - p2)
+        if close > trig and close - trig <= i_maxChaseATR * atr and f_lowestSince(barsSince) > p2
+            sigDir     := 1
+            sigSetup   := "W3"
+            sigStopPiv := p2
+            sigTpBase  := p2
+            sigTpLen   := w1
+            sigPivBar  := b2
+            sigPivots  := "[" + str.tostring(p0, format.mintick) + "," + str.tostring(p1, format.mintick) + "," + str.tostring(p2, format.mintick) + "]"
+    // Bearish: H0 -> L1 -> H2, H2 below H0
+    if sigDir == 0 and shapeOK and d2 == 1 and p2 < p0 and (not i_w3TrendReq or close < emaTrend)
+        float trig = p2 - i_trigFrac * (p2 - p1)
+        if close < trig and trig - close <= i_maxChaseATR * atr and f_highestSince(barsSince) < p2
+            sigDir     := -1
+            sigSetup   := "W3"
+            sigStopPiv := p2
+            sigTpBase  := p2
+            sigTpLen   := w1
+            sigPivBar  := b2
+            sigPivots  := "[" + str.tostring(p0, format.mintick) + "," + str.tostring(p1, format.mintick) + "," + str.tostring(p2, format.mintick) + "]"
+
+// ---- Setup B: ABC correction complete, trend resumes -------------------------
+if sigDir == 0 and i_useABC and nPiv >= 4 and not na(atr) and not na(emaTrend)
+    float x0 = f_p(3)   // start of correction (H0 for longs)
+    float pa = f_p(2)   // end of A
+    float pb = f_p(1)   // end of B
+    float pc = f_p(0)   // end of C
+    int   bc = f_b(0)
+    int   dc = f_d(0)
+    float lenA = math.abs(x0 - pa)
+    float lenC = math.abs(pb - pc)
+    float bRetr = lenA > 0 ? math.abs(pb - pa) / lenA : na
+    float cRat  = lenA > 0 ? lenC / lenA : na
+    int   barsSince = bar_index - bc
+    bool  shapeOK = not na(bRetr) and bRetr >= i_bMin and bRetr <= i_bMax and cRat >= i_cMin and cRat <= i_cMax and lenA >= i_minAATR * atr and barsSince <= i_maxBarsPiv and bc != lastUsedPivotBar
+    // Bullish: H0 -> A(low) -> B(high) -> C(low), B < H0, C < A, uptrend
+    if shapeOK and dc == -1 and pb < x0 and pc < pa and close > emaTrend
+        float trig = pc + i_trigFrac * (pb - pc)
+        if close > trig and close - trig <= i_maxChaseATR * atr and f_lowestSince(barsSince) > pc
+            sigDir     := 1
+            sigSetup   := "ABC"
+            sigStopPiv := pc
+            sigTpBase  := pc
+            sigTpLen   := x0 - pc
+            sigPivBar  := bc
+            sigPivots  := "[" + str.tostring(x0, format.mintick) + "," + str.tostring(pa, format.mintick) + "," + str.tostring(pb, format.mintick) + "," + str.tostring(pc, format.mintick) + "]"
+    // Bearish: L0 -> A(high) -> B(low) -> C(high), B > L0, C > A, downtrend
+    if sigDir == 0 and shapeOK and dc == 1 and pb > x0 and pc > pa and close < emaTrend
+        float trig = pc - i_trigFrac * (pc - pb)
+        if close < trig and trig - close <= i_maxChaseATR * atr and f_highestSince(barsSince) < pc
+            sigDir     := -1
+            sigSetup   := "ABC"
+            sigStopPiv := pc
+            sigTpBase  := pc
+            sigTpLen   := pc - x0
+            sigPivBar  := bc
+            sigPivots  := "[" + str.tostring(x0, format.mintick) + "," + str.tostring(pa, format.mintick) + "," + str.tostring(pb, format.mintick) + "," + str.tostring(pc, format.mintick) + "]"
+
+// ============================================================================
+// LEVELS + FILTERS
+// ============================================================================
+bool  flowOK = (bar_index - lastSignalBar >= i_cooldown) and signalsToday < i_maxPerDay and (not i_oneAtATime or strategy.position_size == 0)
+
+float entry = close
+float sl    = na
+float tp1   = na
+float tp2   = na
+float tp3   = na
+float risk  = na
+bool  fire  = false
+
+if sigDir != 0 and regimeOK and flowOK
+    float structSL = sigStopPiv - sigDir * i_slBufATR * atr
+    float atrSL    = entry - sigDir * i_slATR * atr
+    float tighter  = sigDir == 1 ? math.max(structSL, atrSL) : math.min(structSL, atrSL)
+    sl := i_slMode == "Structural" ? structSL : i_slMode == "ATR" ? atrSL : tighter
+    // Never closer than MinSL x ATR (noise floor)
+    if math.abs(entry - sl) < i_minSlATR * atr
+        sl := entry - sigDir * i_minSlATR * atr
+    risk := math.abs(entry - sl)
+    bool sideOK = sigDir == 1 ? sl < entry : sl > entry
+    if risk > 0 and sideOK and risk <= i_maxSlATR * atr
+        if sigDir == 1
+            tp1 := math.max(sigTpBase + i_tpFib1 * sigTpLen, entry + i_rFloor1 * risk)
+            tp2 := math.max(sigTpBase + i_tpFib2 * sigTpLen, entry + i_rFloor2 * risk)
+            tp3 := math.max(sigTpBase + i_tpFib3 * sigTpLen, entry + i_rFloor3 * risk)
+            tp2 := math.max(tp2, tp1)
+            tp3 := math.max(tp3, tp2)
+        else
+            tp1 := math.min(sigTpBase - i_tpFib1 * sigTpLen, entry - i_rFloor1 * risk)
+            tp2 := math.min(sigTpBase - i_tpFib2 * sigTpLen, entry - i_rFloor2 * risk)
+            tp3 := math.min(sigTpBase - i_tpFib3 * sigTpLen, entry - i_rFloor3 * risk)
+            tp2 := math.min(tp2, tp1)
+            tp3 := math.min(tp3, tp2)
+        fire := true
+
+longSig  = fire and sigDir == 1
+shortSig = fire and sigDir == -1
+
+// ============================================================================
+// JSON PAYLOAD
+// ============================================================================
+f_num(float x) => str.tostring(x, format.mintick)
+
+f_recent(int n) =>
+    string s = "["
+    if n > 0
+        for i = n - 1 to 0
+            s := s + str.tostring(close[i], format.mintick) + (i > 0 ? "," : "")
+    s + "]"
+
+f_json(int dir, string setup, float e, float s, float t1, float t2, float t3, float r, string pivots) =>
+    string sym = i_symOverride == "" ? syminfo.ticker : i_symOverride
+    string sid = sym + "-" + timeframe.period + "-" + str.tostring(time, "#")
+    '{"secret":"' + i_secret + '"' +
+     ',"signal_id":"' + sid + '"' +
+     ',"source":"tradingview","strategy":"ATR-EW","schema":1' +
+     ',"symbol":"' + sym + '"' +
+     ',"tv_ticker":"' + syminfo.tickerid + '"' +
+     ',"timeframe":"' + timeframe.period + '"' +
+     ',"direction":"' + (dir == 1 ? "BUY" : "SELL") + '"' +
+     ',"setup":"' + setup + '"' +
+     ',"entry":' + f_num(e) +
+     ',"sl":' + f_num(s) +
+     ',"tp1":' + f_num(t1) +
+     ',"tp2":' + f_num(t2) +
+     ',"tp3":' + f_num(t3) +
+     ',"atr":' + str.tostring(atr, "#.########") +
+     ',"atr_ratio":' + str.tostring(atrRatio, "#.###") +
+     ',"adx":' + str.tostring(nz(adxVal), "#.#") +
+     ',"ema_trend":' + f_num(emaTrend) +
+     ',"risk_atr":' + str.tostring(r / atr, "#.###") +
+     ',"pivots":' + pivots +
+     ',"recent_closes":' + f_recent(i_recentBars) +
+     ',"bar_time":' + str.tostring(time, "#") +
+     ',"timestamp":"' + str.format_time(time_close, "yyyy-MM-dd'T'HH:mm:ss'Z'", "UTC") + '"}'
+
+// ============================================================================
+// ORDERS (Strategy Tester = measurement) + ALERT
+// ============================================================================
+var string tId   = ""
+var float  tSL   = na
+var float  tTP1  = na
+var float  tTP2  = na
+var float  tTP3  = na
+var float  tQ1   = na
+var float  tQ2   = na
+var float  initQ = na
+var bool   beDone = false
+var bool   trailDone = false
+
+if fire
+    lastUsedPivotBar := sigPivBar
+    lastSignalBar    := bar_index
+    signalsToday     += 1
+    alert(f_json(sigDir, sigSetup, entry, sl, tp1, tp2, tp3, risk, sigPivots), alert.freq_once_per_bar_close)
+
+    if strategy.position_size == 0
+        float qty = (strategy.equity * i_riskPct / 100.0) / (risk * syminfo.pointvalue)
+        tId  := sigDir == 1 ? "L" : "S"
+        tSL  := sl
+        tTP1 := tp1
+        tTP2 := tp2
+        tTP3 := tp3
+        tQ1  := qty * i_tp1Pct / 100.0
+        tQ2  := qty * i_tp2Pct / 100.0
+        initQ := qty          // set from the order, not the fill: TP1 may fill on the entry bar
+        beDone := false
+        trailDone := false
+        strategy.entry(tId, sigDir == 1 ? strategy.long : strategy.short, qty=qty, comment=sigSetup)
+        strategy.exit(tId + "-TP1", tId, qty=tQ1, limit=tTP1, stop=tSL, comment_profit="TP1", comment_loss="SL")
+        strategy.exit(tId + "-TP2", tId, qty=tQ2, limit=tTP2, stop=tSL, comment_profit="TP2", comment_loss="SL")
+        strategy.exit(tId + "-TP3", tId, limit=tTP3, stop=tSL, comment_profit="TP3", comment_loss="SL")
+
+// Stop management mirrors the EA: BE after TP1, stop -> TP1 after TP2. Only re-issue exits still open.
+if strategy.position_size != 0 and not na(initQ)
+    float cur    = math.abs(strategy.position_size)
+    bool  tp1Hit = cur < initQ * 0.999
+    bool  tp2Hit = cur <= initQ * (1.0 - (i_tp1Pct + i_tp2Pct) / 100.0) * 1.001
+    if i_trailAfterTP2 and tp2Hit and not trailDone
+        strategy.exit(tId + "-TP3", tId, limit=tTP3, stop=tTP1, comment_profit="TP3", comment_loss="TRAIL")
+        trailDone := true
+        beDone := true
+    else if i_beAfterTP1 and tp1Hit and not beDone
+        float be = strategy.position_avg_price
+        if not tp2Hit
+            strategy.exit(tId + "-TP2", tId, qty=tQ2, limit=tTP2, stop=be, comment_profit="TP2", comment_loss="BE")
+        strategy.exit(tId + "-TP3", tId, limit=tTP3, stop=be, comment_profit="TP3", comment_loss="BE")
+        beDone := true
+
+// ============================================================================
+// VISUALS (for human review)
+// ============================================================================
+plot(emaTrend, "Trend EMA", color=color.new(color.orange, 40))
+plotshape(longSig,  "Long signal",  shape.triangleup,   location.belowbar, color.new(color.teal, 0), size=size.small)
+plotshape(shortSig, "Short signal", shape.triangledown, location.abovebar, color.new(color.red, 0),  size=size.small)
+bgcolor(regimeOK ? na : color.new(color.gray, 92), title="Regime filter OFF")
+plot(atrRatio, "ATR ratio", display=display.data_window)
+plot(adxVal,   "ADX",       display=display.data_window)
+
+if fire and i_showLevels
+    color c = sigDir == 1 ? color.teal : color.red
+    int x2 = bar_index + 20
+    line.new(bar_index, entry, x2, entry, color=color.new(color.blue, 0))
+    line.new(bar_index, sl,    x2, sl,    color=color.new(color.red, 0), style=line.style_dashed)
+    line.new(bar_index, tp1,   x2, tp1,   color=color.new(color.green, 40), style=line.style_dotted)
+    line.new(bar_index, tp2,   x2, tp2,   color=color.new(color.green, 20), style=line.style_dotted)
+    line.new(bar_index, tp3,   x2, tp3,   color=color.new(color.green, 0),  style=line.style_dotted)
+    string txt = (sigDir == 1 ? "BUY " : "SELL ") + sigSetup + "\nE " + f_num(entry) + "\nSL " + f_num(sl) + "\nTP1 " + f_num(tp1) + "\nTP2 " + f_num(tp2) + "\nTP3 " + f_num(tp3)
+    label.new(bar_index, sigDir == 1 ? low : high, txt, style=sigDir == 1 ? label.style_label_up : label.style_label_down, color=color.new(c, 15), textcolor=color.white, size=size.small)
