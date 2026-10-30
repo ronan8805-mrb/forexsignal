@@ -161,7 +161,7 @@ void ReportToBridge(string evt, long seq, string sym, ulong ticket, double volum
    int n = StringToCharArray(json, data, 0, WHOLE_ARRAY, CP_UTF8);
    if(n > 0)
       ArrayResize(data, n - 1);   // drop trailing \0
-   string headers = "Content-Type: application/json\r\nX-Bridge-Token: " + InpBridgeToken + "\r\n";
+   string headers = "Content-Type: application/json\r\nX-Bridge-Token: " + InpBridgeToken + "\r\nngrok-skip-browser-warning: 1\r\n";  // header is harmless locally; avoids ngrok free-tier interstitial
    ResetLastError();
    int code = WebRequest("POST", InpReportUrl, headers, 3000, data, result, resHeaders);
    if(code != 200)
@@ -799,7 +799,7 @@ void PollHttp()
   {
    long lastSeq = GlobalVariableCheck(GvLastSeq()) ? (long)GlobalVariableGet(GvLastSeq()) : 0;
    string url = InpBridgePollUrl + "?after=" + IntegerToString(lastSeq);
-   string headers = "X-Bridge-Token: " + InpBridgeToken + "\r\n";
+   string headers = "X-Bridge-Token: " + InpBridgeToken + "\r\nngrok-skip-browser-warning: 1\r\n";  // header is harmless locally; avoids ngrok free-tier interstitial
    char data[], result[];
    string resHeaders;
    ResetLastError();

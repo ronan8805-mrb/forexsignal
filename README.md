@@ -126,7 +126,9 @@ Telegram setup:
 
 **Step 3 — Public HTTPS endpoint for TradingView.**
 - TradingView webhooks only post to ports 80/443.
-- Use a VPS with nginx + TLS, or a Cloudflare Tunnel pointed at `http://127.0.0.1:8000`, e.g. `cloudflared tunnel --url http://127.0.0.1:8000`. Use a named tunnel for production.
+- Recommended: run everything on your PC and use the free ngrok static domain (stable URL, no open ports). Full Windows walkthrough with start/autostart scripts: **[docs/WINDOWS_SETUP.md](docs/WINDOWS_SETUP.md)**.
+- Alternatives: a named Cloudflare Tunnel (needs your own domain on Cloudflare), or a VPS with nginx + TLS. Avoid random-URL quick tunnels: the alert URL would change on every restart.
+- Serverless hosts (Vercel etc.) don't fit: the bridge needs a persistent disk, a background worker, and local access to MT5 and Ollama.
 - Webhooks need a paid TradingView plan with 2FA enabled.
 
 **Step 4 — TradingView alerts.** Do this once per chart (symbol × timeframe):
@@ -277,4 +279,6 @@ bridge/tools/send_test_signal.py  end-to-end smoke test
 bridge/tools/report.py            measurement report
 bridge/tests/test_bridge.py       15 tests (mocked Telegram + LLM)
 mt5/ATR_EW_Executor.mq5           Expert Advisor
+scripts/*.ps1                     Windows: start bridge, start ngrok tunnel, autostart at logon
+docs/WINDOWS_SETUP.md             step-by-step PC deployment
 ```
