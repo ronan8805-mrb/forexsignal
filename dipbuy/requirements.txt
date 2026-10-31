@@ -1,0 +1,3 @@
+# Engine runtime (Windows, 64-bit Python 3.11-3.13). Everything else is standard library.
+MetaTrader5
+# Tests only (tests/test_replay.py, tests/test_smoke.py): pandas, numpy

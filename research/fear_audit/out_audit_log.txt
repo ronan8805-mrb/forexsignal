@@ -1,0 +1,140 @@
+built 8957 baseline trades on 152 markets in 2s
+identity check PRIMARY: n 1307 exp +0.0431 (reproduced baseline: 1307, +0.043)
+component coverage: {'f1': '100% have data, 9.6% of those in fear', 'f2': '27% have data, 7.3% of those in fear', 'f3': '96% have data, 8.5% of those in fear', 'f4': '96% have data, 26.0% of those in fear', 'f5': '100% have data, 58.0% of those in fear'} | F1 real VIX3M share 97%
+composite: 21.9% of all candidate trades vetoed
+
+=== FILTER OFF vs ON, by pre-registered group (net R) ===
+          n_off  exp_off  PF_off  win_off    n_on  exp_on  PF_on  win_on  vetoed  exp_vetoed
+COMMOD    593.0  -0.0085    0.96     63.9   425.0 -0.0080   0.96    63.3   168.0     -0.0097
+CRYPTO    120.0  -0.0180    0.89     63.3   100.0 -0.0131   0.92    63.0    20.0     -0.0425
+FX       1083.0   0.0005    1.00     63.3   860.0 -0.0002   1.00    63.7   223.0      0.0033
+OTHER      29.0   0.0323    1.28     65.5    20.0  0.0044   1.03    60.0     9.0      0.0944
+PRIMARY  1307.0   0.0431    1.23     71.0  1029.0  0.0567   1.33    72.1   278.0     -0.0071
+REF       557.0   0.0607    1.37     70.7   432.0  0.0598   1.38    70.4   125.0      0.0639
+SECOND    365.0   0.0054    1.03     61.6   298.0  0.0150   1.09    61.1    67.0     -0.0373
+STOCKS   4903.0   0.0240    1.12     66.7  3832.0  0.0260   1.14    66.8  1071.0      0.0166
+
+=== by asset class ===
+                          n_off  exp_off  PF_off  win_off    n_on  exp_on  PF_on  win_on  vetoed  exp_vetoed
+Bonds/credit              156.0  -0.0229    0.89     59.6   138.0 -0.0077   0.96    60.1    18.0     -0.1397
+Crypto                    120.0  -0.0180    0.89     63.3   100.0 -0.0131   0.92    63.0    20.0     -0.0425
+Energy/ags                613.0  -0.0062    0.97     64.3   439.0 -0.0006   1.00    64.2   174.0     -0.0204
+FX                       1083.0   0.0005    1.00     63.3   860.0 -0.0002   1.00    63.7   223.0      0.0033
+Metals                    409.0  -0.0094    0.95     61.1   323.0 -0.0154   0.91    59.1    86.0      0.0128
+Non-US equity index/ETF   544.0   0.0203    1.12     69.1   439.0  0.0326   1.20    69.7   105.0     -0.0315
+Single stocks EU/UK/CH   1757.0   0.0092    1.05     66.3  1380.0  0.0094   1.05    66.7   377.0      0.0082
+Single stocks JP          493.0   0.0334    1.18     66.7   383.0  0.0428   1.25    66.3   110.0      0.0004
+Single stocks US         2653.0   0.0320    1.17     66.9  2069.0  0.0340   1.19    67.0   584.0      0.0251
+US equity index/ETF      1100.0   0.0794    1.45     73.9   845.0  0.0913   1.54    75.1   255.0      0.0399
+Volatility ETN             29.0   0.0323    1.28     65.5    20.0  0.0044   1.03    60.0     9.0      0.0944
+
+=== ALL MARKETS === {'n_off': 8957, 'exp_off': np.float64(0.0228), 'PF_off': np.float64(1.12), 'win_off': np.float64(66.7), 'n_on': 6996, 'exp_on': np.float64(0.0262), 'PF_on': np.float64(1.15), 'win_on': np.float64(66.9), 'vetoed': 1961, 'exp_vetoed': np.float64(0.0104)}
+PRIMARY 2013-22: {'n_off': 685, 'exp_off': np.float64(0.0075), 'PF_off': np.float64(1.03), 'win_off': np.float64(69.8), 'n_on': 537, 'exp_on': np.float64(0.0157), 'PF_on': np.float64(1.07), 'win_on': np.float64(70.0), 'vetoed': 148, 'exp_vetoed': np.float64(-0.022)} 
+PRIMARY 2023-26 holdout: {'n_off': 622, 'exp_off': np.float64(0.0823), 'PF_off': np.float64(1.59), 'win_off': np.float64(72.3), 'n_on': 492, 'exp_on': np.float64(0.1015), 'PF_on': np.float64(1.82), 'win_on': np.float64(74.4), 'vetoed': 130, 'exp_vetoed': np.float64(0.0099)}
+ALL 2023-26 holdout: {'n_off': 3705, 'exp_off': np.float64(0.0351), 'PF_off': np.float64(1.2), 'win_off': np.float64(66.9), 'n_on': 3006, 'exp_on': np.float64(0.0392), 'PF_on': np.float64(1.24), 'win_on': np.float64(67.2), 'vetoed': 699, 'exp_vetoed': np.float64(0.0177)}
+
+per instrument: filter raises expectancy in 86 of 152 markets (1 markets had nothing vetoed)
+
+=== by VIX regime at signal (all markets) ===
+           n_off  exp_off  PF_off  win_off    n_on  exp_on  PF_on  win_on  vetoed  exp_vetoed
+VIX<15    2455.0  -0.0051    0.97     64.8  2402.0 -0.0047   0.98    65.1    53.0     -0.0271
+VIX15-25  5253.0   0.0375    1.21     67.5  4078.0  0.0378   1.22    67.3  1175.0      0.0366
+VIX>25    1249.0   0.0156    1.07     66.9   516.0  0.0787   1.55    71.9   733.0     -0.0289
+
+=== components alone (diagnostic, never selected): expectancy of trades where the component is in fear vs not ===
+  f1: fear n=856 exp +0.0075 | calm n=8101 exp +0.0244
+  f2: fear n=178 exp -0.0027 | calm n=2258 exp +0.0021
+  f3: fear n=731 exp +0.0058 | calm n=7885 exp +0.0231
+  f4: fear n=2226 exp +0.0061 | calm n=6337 exp +0.0279
+  f5: fear n=5198 exp +0.0261 | calm n=3759 exp +0.0182
+  inverse (trade ONLY when composite vetoes): {'n': 1961, 'win': np.float64(66.1), 'exp': np.float64(0.0104), 'PF': np.float64(1.05)}
+
+=== THE NUMBER: portfolio Sharpe (all 152 markets, 0.5% risk/trade, after costs) ===
+  filter OFF 0.404 | filter ON 0.478 | change +0.074 | random veto of the same 1961 trades: mean 0.391, 95th pct 0.472, p = 0.040
+  PRIMARY: Sharpe off 0.469 on 0.576
+  PRIMARY+REF: Sharpe off 0.495 on 0.554
+
+=== year by year (all markets) ===
+ year    n  vetoed  exp_off  exp_on  sharpe_off  sharpe_on  ret_off_pct  ret_on_pct  helps
+ 2004   22       0   0.0940  0.0940        0.93       0.93          1.0         1.0  False
+ 2005   39       0  -0.0011 -0.0011       -0.02      -0.02         -0.0        -0.0  False
+ 2006   35       1   0.0691  0.0713        1.11       1.11          1.2         1.2  False
+ 2007   54      14   0.0513  0.1049        0.92       2.26          1.4         2.1   True
+ 2008   49       6   0.0615  0.0319        0.86       0.40          1.5         0.7  False
+ 2009   64       2   0.0354  0.0267        0.55       0.40          1.1         0.8  False
+ 2010   56       4   0.0306  0.0234        0.54       0.39          0.9         0.6  False
+ 2011   66      24  -0.0359 -0.0233       -0.54      -0.30         -1.2        -0.5   True
+ 2012   64      12  -0.0814 -0.1003       -1.15      -1.22         -2.6        -2.6  False
+ 2013   92       7   0.1351  0.1198        1.33       1.10          6.2         5.1  False
+ 2014  136      39   0.0023  0.0097        0.05       0.17          0.2         0.5   True
+ 2015  104      41   0.0960  0.0666        0.95       1.12          5.0         2.1   True
+ 2016  163      30   0.0204  0.0057        0.43       0.11          1.7         0.4  False
+ 2017  386      26   0.0677  0.0599        2.22       1.97         13.1        10.8  False
+ 2018  676     274  -0.0461 -0.1135       -0.76      -1.38        -15.6       -22.8  False
+ 2019  736     145   0.0090 -0.0203        0.19      -0.37          3.3        -6.0  False
+ 2020  799     204  -0.0228  0.0376       -0.38       0.92         -9.1        11.2   True
+ 2021 1144     147   0.0879  0.0811        2.53       2.23         50.3        40.4  False
+ 2022  557     281  -0.0732 -0.0873       -1.52      -1.65        -20.4       -12.1  False
+ 2023  882     253   0.0094  0.0303        0.33       1.01          4.1         9.5   True
+ 2024 1083     154   0.0177 -0.0115        0.61      -0.40          9.6        -5.3  False
+ 2025  896     164   0.0433  0.0491        1.25       1.90         19.4        18.0   True
+ 2026  854     133   0.0725  0.1017        2.73       3.71         30.9        36.7   True
+  filter improves Sharpe in 8 of 23 years; 2023-26 share of total Sharpe-points gained: +1.30 of +1.23
+
+=== STRESS 1: winner purge (drop top 5% of trades by R) ===
+                    set    n  exp_off  purged_off  exp_on  purged_on
+                    ALL 8957   0.0228     -0.0206  0.0262    -0.0148
+                 COMMOD  593  -0.0085     -0.0486 -0.0080    -0.0494
+                 CRYPTO  120  -0.0180     -0.0622 -0.0131    -0.0602
+                     FX 1083   0.0005     -0.0412 -0.0002    -0.0336
+                  OTHER   29   0.0323      0.0004  0.0044    -0.0199
+                PRIMARY 1307   0.0431      0.0039  0.0567     0.0179
+                    REF  557   0.0607      0.0115  0.0598     0.0087
+                 SECOND  365   0.0054     -0.0330  0.0150    -0.0191
+                 STOCKS 4903   0.0240     -0.0207  0.0260    -0.0164
+           Bonds/credit  156  -0.0229     -0.0626 -0.0077    -0.0446
+                 Crypto  120  -0.0180     -0.0622 -0.0131    -0.0602
+             Energy/ags  613  -0.0062     -0.0461 -0.0006    -0.0407
+                     FX 1083   0.0005     -0.0412 -0.0002    -0.0336
+                 Metals  409  -0.0094     -0.0459 -0.0154    -0.0495
+Non-US equity index/ETF  544   0.0203     -0.0164  0.0326    -0.0030
+ Single stocks EU/UK/CH 1757   0.0092     -0.0331  0.0094    -0.0311
+       Single stocks JP  493   0.0334     -0.0107  0.0428    -0.0004
+       Single stocks US 2653   0.0320     -0.0142  0.0340    -0.0098
+    US equity index/ETF 1100   0.0794      0.0344  0.0913     0.0450
+         Volatility ETN   29   0.0323      0.0004  0.0044    -0.0199
+
+=== STRESS 2: crisis windows (trades entered in the window; all markets with data) ===
+  data-defined breakdown episodes (rolling-30 PRIMARY+REF < -0.30R): 7
+              window  markets  n_off  cumR_off  maxDD_R_off  days_to_trough_off  n_on  cumR_on  maxDD_R_on  days_to_trough_on  stopouts  avg_stop_R  worst_R  gaps_beyond_1_2R
+            GFC 2008        6     26     -0.28         1.18                 106  23.0    -0.78        1.68              106.0         3      -1.004    -1.01                 0
+            Aug 2011        9     16     -4.98         5.44                  91   3.0    -2.18        2.18               98.0         5      -1.006    -1.01                 0
+    China deval 2015        8     16      3.64         5.40                  63   NaN     0.00         NaN                NaN         5      -1.009    -1.02                 0
+    Volmageddon 2018       78    203    -26.77        45.33                  17  72.0   -36.66       38.73               89.0        55      -1.086    -2.15                10
+             Q4 2018       73    172    -26.94        30.80                  10  37.0   -29.64       30.52               18.0        51      -1.046    -1.49                 3
+          COVID 2020       89    143    -83.77        88.30                  33  35.0   -20.36       22.90                9.0        86      -1.103    -1.68                18
+           Bear 2022      111    445    -49.58        52.05                 273 171.0   -30.52       33.31              247.0        99      -1.058    -2.90                 6
+      Yen carry 2024      100    155     -8.88        24.85                  22 108.0   -25.79       26.85               58.0        36      -1.068    -2.08                 2
+        Tariffs 2025       87    154    -33.27        44.39                  47  66.0   -19.47       19.47               78.0        52      -1.071    -1.57                 6
+breakdown 2017-11-16       83    219     -4.92        46.30                  88 145.0    -9.65       30.28               82.0        43      -1.107    -2.15                10
+breakdown 2018-01-03       81    190    -24.95        46.08                  40  84.0   -31.65       39.49               85.0        53      -1.089    -2.15                10
+breakdown 2018-09-11       99    275    -14.60        30.87                  30 134.0   -15.59       30.81              178.0        57      -1.048    -1.49                 4
+breakdown 2019-06-27      107    280    -21.07        37.37                  99 212.0   -39.66       50.96              104.0        57      -1.086    -2.07                 8
+breakdown 2020-01-30      118    405    -45.10        91.84                  53 278.0    11.74       26.44               29.0       100      -1.094    -1.68                18
+breakdown 2021-12-06      118    440    -46.29        55.45                 280 198.0   -29.72       36.93              275.0        95      -1.061    -2.90                 6
+breakdown 2025-02-06       94    182    -31.03        46.61                  60  94.0   -17.23       21.37               60.0        53      -1.070    -1.57                 6
+  2008 coverage note: markets with trades in the GFC window -> usdcad, usdchf, usdjpy, usdsek, xagusd, xauusd
+
+=== STRESS 3: cross-instrument (net R, filter off / on, share of markets positive) ===
+                    cls  markets    n  exp_off  exp_on pos_off pos_on  gross_off
+           Bonds/credit        5  156  -0.0229 -0.0077     3/5    3/5     0.0435
+                 Crypto        3  120  -0.0180 -0.0131     2/3    1/3     0.0073
+             Energy/ags       12  613  -0.0062 -0.0006    5/12   5/12     0.0114
+                     FX       10 1083   0.0005 -0.0002    6/10   5/10     0.0196
+                 Metals        8  409  -0.0094 -0.0154     4/8    4/8     0.0160
+Non-US equity index/ETF        7  544   0.0203  0.0326     3/7    6/7     0.0515
+ Single stocks EU/UK/CH       30 1757   0.0092  0.0094   15/30  13/30     0.0467
+       Single stocks JP       10  493   0.0334  0.0428    7/10   8/10     0.0680
+       Single stocks US       49 2653   0.0320  0.0340   30/49  31/49     0.0627
+    US equity index/ETF       17 1100   0.0794  0.0913   15/17  15/17     0.1112
+         Volatility ETN        1   29   0.0323  0.0044     1/1    1/1     0.0393

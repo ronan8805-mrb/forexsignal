@@ -1,0 +1,37 @@
+# Dip-buy engine settings. Copy this file to config.toml (setup_dipbuy.ps1 does it for you) and edit.
+# config.toml is git-ignored - it may hold your MT5 password.
+
+[account]
+dry_run = true              # true = signals + Telegram only, NO orders. Set false once `check` looks right.
+allow_live = false          # the engine refuses to place orders on a REAL account unless this is true
+risk_pct = 0.5              # % of equity lost if the 3xATR stop is hit (per trade)
+max_open_positions = 8      # at most this many positions at once (8 x 0.5% = 4% total risk)
+max_new_per_day = 4         # crowded days: deepest dips (lowest RSI) are taken first, the rest skipped
+pause_drawdown_pct = 14     # pause new entries if equity falls this far below its peak
+pause_rolling_trades = 50   # ...or if the last N closed trades are net negative
+max_lots = 50               # hard cap on any single order
+magic = 777201              # tags this engine's orders so it never touches other trades
+
+[execution]
+max_spread_atr_frac = 0.05  # wait while spread > 5% of daily ATR (wide spreads at the session open)
+entry_valid_hours = 30      # give up on an entry not filled within this many hours
+deviation_points = 50       # max slippage accepted by the broker for market orders
+
+[mt5]
+# Leave blank to use the MT5 terminal that is already open and logged in (recommended).
+terminal_path = ""          # e.g. "C:\\Program Files\\MetaTrader 5\\terminal64.exe" if you have several
+login = 0
+password = ""
+server = ""
+
+[telegram]
+# Leave blank to reuse TELEGRAM_BOT_TOKEN / TELEGRAM_CHAT_ID from bridge\.env
+bot_token = ""
+chat_id = ""
+
+[symbols]
+# The engine finds common broker names automatically (run `python engine.py check`).
+# Override a name, or "-" to switch an instrument off. Examples:
+# US500 = "US500.cash"
+# NAS100 = "USTEC"
+# DE40 = "-"

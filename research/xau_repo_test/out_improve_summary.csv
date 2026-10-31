@@ -1,0 +1,21 @@
+variant,period,n,win,exp,PF,sumR
+V0 repo fixed (reference),DEV 2006-16,249,41.4,-0.137,0.73,-34.2
+V0 repo fixed (reference),VAL 2017-22,148,45.3,-0.015,0.96,-2.3
+V0 repo fixed (reference),HOLDOUT 2023-26,82,45.1,0.006,1.01,0.5
+V0 repo fixed (reference),FULL,479,43.2,-0.075,0.84,-35.9
+V1 repo + trailing exit (H1),DEV 2006-16,249,26.9,0.138,1.23,34.3
+V1 repo + trailing exit (H1),VAL 2017-22,150,29.3,0.008,1.01,1.2
+V1 repo + trailing exit (H1),HOLDOUT 2023-26,85,30.6,0.1,1.16,8.5
+V1 repo + trailing exit (H1),FULL,484,28.3,0.091,1.16,44.0
+V2 H4 + daily trend,DEV 2006-16,273,31.5,0.185,1.4,50.5
+V2 H4 + daily trend,VAL 2017-22,171,26.9,0.011,1.02,1.9
+V2 H4 + daily trend,HOLDOUT 2023-26,88,38.6,0.148,1.35,13.0
+V2 H4 + daily trend,FULL,532,31.2,0.123,1.26,65.4
+V3 daily 50/20 breakout,DEV 2006-16,52,28.8,0.101,1.17,5.2
+V3 daily 50/20 breakout,VAL 2017-22,24,45.8,0.45,1.94,10.8
+V3 daily 50/20 breakout,HOLDOUT 2023-26,17,47.1,0.664,2.62,11.3
+V3 daily 50/20 breakout,FULL,93,36.6,0.294,1.55,27.3
+"V4 daily breakout, long only",DEV 2006-16,28,35.7,0.415,1.75,11.6
+"V4 daily breakout, long only",VAL 2017-22,14,57.1,1.005,3.99,14.1
+"V4 daily breakout, long only",HOLDOUT 2023-26,13,53.8,1.029,3.84,13.4
+"V4 daily breakout, long only",FULL,55,45.5,0.71,2.57,39.1

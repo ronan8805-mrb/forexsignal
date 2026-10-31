@@ -1,0 +1,67 @@
+[1] date-clustered random veto (1961 trades): mean Sharpe 0.379, 95th pct 0.557, filter 0.478, p = 0.164
+
+[2] PRIMARY+REF: Sharpe off 0.495 on 0.554 | helps 6 / hurts 12 years
+ year   n  vetoed  exp_off  exp_on  sh_off  sh_on
+ 2007   4       1    0.150   0.136    1.65   1.32
+ 2008  14       0    0.054   0.054    0.58   0.58
+ 2009  20       0    0.079   0.079    1.28   1.28
+ 2010  19       3    0.165   0.150    2.73   2.29
+ 2011  20       9   -0.051  -0.160   -0.37  -0.92
+ 2012   9       1   -0.259  -0.322   -0.79  -0.87
+ 2013  34       2    0.372   0.349    1.49   1.33
+ 2014  62      19   -0.020  -0.017   -0.21  -0.17
+ 2015  58      18    0.123   0.128    1.84   1.70
+ 2016  55       8    0.024   0.036    0.29   0.37
+ 2017  84      12    0.161   0.145    2.61   2.31
+ 2018 120      43   -0.179  -0.216   -1.45  -1.46
+ 2019 142      24   -0.023  -0.055   -0.21  -0.44
+ 2020 124      34   -0.036   0.060   -0.36   0.73
+ 2021 230      34    0.135   0.106    1.58   1.15
+ 2022  64      24   -0.246  -0.248   -1.52  -1.60
+ 2023 156      46    0.006   0.063    0.11   1.07
+ 2024 238      51    0.079   0.011    1.46   0.18
+ 2025 203      36    0.139   0.173    2.75   3.88
+ 2026 208      38    0.097   0.145    1.99   2.84
+
+[2] live-engine ETFs (MetaQuotes demo): Sharpe off 0.731 on 0.754 | helps 5 / hurts 4 years
+ year   n  vetoed  exp_off  exp_on  sh_off  sh_on
+ 2017   6       0    0.367   0.367    1.80   1.80
+ 2018  43      19   -0.173  -0.267   -1.34  -1.65
+ 2019  47       4   -0.012  -0.030   -0.09  -0.21
+ 2020  43      12    0.040   0.193    0.27   2.15
+ 2021 102      13    0.184   0.157    1.91   1.49
+ 2022  30      12   -0.221  -0.238   -1.17  -1.15
+ 2023  47      16    0.092   0.120    1.07   1.11
+ 2024  96      20    0.048  -0.022    0.66  -0.27
+ 2025  75      11    0.195   0.210    3.58   3.77
+ 2026  96      14    0.095   0.124    1.82   2.20
+
+[3] top 5% trades: n 448, R >= 0.62, mean +0.85R, max +8.80R; share of total R of all trades: 186%
+    by year: {2007: 1, 2008: 3, 2011: 2, 2012: 1, 2013: 8, 2014: 9, 2015: 2, 2016: 6, 2017: 18, 2018: 36, 2019: 46, 2020: 53, 2021: 83, 2022: 13, 2023: 32, 2024: 58, 2025: 42, 2026: 35}
+    by class: {'Single stocks US': 163, 'Single stocks EU/UK/CH': 86, 'US equity index/ETF': 80, 'Single stocks JP': 33, 'Energy/ags': 26, 'FX': 24, 'Non-US equity index/ETF': 18, 'Metals': 8, 'Bonds/credit': 6, 'Crypto': 4}
+    vetoed by the filter: 30% (all trades: 22%) | held 3.2 days avg
+    top 5% within US equity index/ETF purge survives: 0.0344
+
+[4] crisis windows, PRIMARY+REF only
+          window  n  cumR_off  ddR_off  days_to_trough  perTrade_off  n_on  cumR_on  ddR_on  stopouts  avg_stop_R  worst
+        Aug 2011  4     -1.32     2.01              60        -0.330     1    -1.00    1.00         2      -1.006  -1.01
+China deval 2015  2     -2.02     2.02              11        -1.012     0     0.00    0.00         2      -1.012  -1.02
+Volmageddon 2018 48    -11.28    12.73              56        -0.235    19    -7.17    8.06        17      -1.035  -1.33
+         Q4 2018 20     -9.13     9.29              10        -0.457     8    -8.19    8.19        11      -1.031  -1.11
+      COVID 2020 19    -18.50    18.50              26        -0.973     4    -4.03    4.03        17      -1.076  -1.41
+       Bear 2022 47    -17.95    18.11             266        -0.382    23   -12.13   12.29        22      -1.034  -1.21
+  Yen carry 2024 34      0.86     6.14              10         0.025    18    -5.11    6.29         7      -1.026  -1.05
+    Tariffs 2025 31     -9.45    11.37              47        -0.305    15    -4.94    5.45        12      -1.106  -1.53
+
+[5] filter (F1-F4, >=2, as of the previous close) on every other strategy's trades
+                   strategy     n  exp_off  n_on  exp_on  vetoed  exp_vetoed
+            VWAP A pullback 25853  -0.1535 22711 -0.1559    3142     -0.1356
+             VWAP B reclaim 34652  -0.1542 30398 -0.1598    4254     -0.1139
+           VWAP C band fade 25164  -0.1046 22261 -0.1029    2903     -0.1176
+         hourly dip-buy H-A 12297  -0.0426 11908 -0.0437     389     -0.0105
+         hourly dip-buy H-B 17304  -0.0430 16374 -0.0448     930     -0.0110
+      ATR-EW walk-forward A  3966  -0.1040  3493 -0.1058     473     -0.0906
+      ATR-EW walk-forward B  5071  -0.1137  4506 -0.1171     565     -0.0863
+daily MR dev (idx+metals) A   279   0.0491   226  0.0384      53      0.0950
+[6] post-hoc: veto if >= 1 of F1-F4 (no candle proxy): vetoes 29%, exp on +0.0268, Sharpe 0.477  (diagnostic only)
+[6] post-hoc: veto if >= 2 of F1-F4 (no candle proxy): vetoes 12%, exp on +0.0257, Sharpe 0.472  (diagnostic only)

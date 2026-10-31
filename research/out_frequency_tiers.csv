@@ -1,0 +1,6 @@
+tier,trades,win,expR,PF,maxDD,signals_per_day,wins_per_day,pct_days_with_a_win,pct_days_no_signal,max_signals_one_day
+T1 core 4 indices,267,77.2,0.093,1.6,2.3,0.13,0.1,6.7,91.5,4
+T2 24 indices+ETFs,1266,72.7,0.064,1.38,11.0,0.62,0.45,20.4,74.9,16
+T3 + 88 stocks,5434,68.1,0.034,1.18,34.9,2.67,1.82,57.2,32.8,32
+"T3 + 88 stocks, max 10 open",2663,66.7,0.025,1.14,12.5,1.31,0.87,47.9,39.4,10
+"T3 + 88 stocks, max 20 open",4075,67.6,0.028,1.15,21.9,2.0,1.35,55.2,34.2,18

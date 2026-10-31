@@ -4,3 +4,19 @@ config.yaml
 __pycache__/
 .pytest_cache/
 .venv/
+# dip-buy engine: local settings, live state and logs
+dipbuy/config.toml
+dipbuy/state.json
+dipbuy/state.tmp
+dipbuy/journal.csv
+dipbuy/engine.log
+dipbuy/.engine.lock
+research/data_daily*/
+dipbuy/.last_error.json
+# third-party market data (re-downloadable; keep out of git)
+research/fear_audit/data/
+research/fear_audit/data_daily_extra/
+research/fear_audit/repro/data_daily
+research/fear_audit/verify/
+dipbuy/.last_error.json
+research/*.pkl
